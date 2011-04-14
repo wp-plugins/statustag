@@ -1,14 +1,14 @@
 <?php
 /**
  * @package StatusTag
- * @version 0.9.0
+ * @version 0.9.1
  */
 /*
 Plugin Name: StatusTag
 Plugin URI: http://wordpress.org/extend/plugins/statustag/
 Description: Put your tagline to better use! Display your latest post from Twitter!
 Author: Tim S Christie
-Version: 0.9.0
+Version: 0.9.1
 Author URI: http://timschristie.com/
 License: GPL2
 */
@@ -19,6 +19,7 @@ License: GPL2
  * Display your latest tweet, instead of the default tagline
  */
 add_filter('option_blogdescription','replace_description');
+wp_enqueue_style( 'st_styles', plugins_url('/st_styles.css', __FILE__) );
 
 function replace_description($description) {
 	$description = get_latest_tweet();
@@ -32,12 +33,12 @@ function blog_filter($string, $show) {
 	 * NOTE: If your description is displayed in the title, these things will make it look ugly (i.e. HTML markup in title)
 	 */
 	if($show == "description" && get_option('st_links')) {
+		// Handle regular links <-- must come first or it messes up the links created below
+		$string = preg_replace('@(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@', '<a href="$1">$1</a>', $string);
 		// Handle @username
 		$string = preg_replace('/(^|\s)@(\w+)/','\1@<a href="http://www.twitter.com/\2">\2</a>',$string);
 		// Handle #hashtags
 		$string = preg_replace('/(^|\s)#(\w+)/','\1#<a href="http://search.twitter.com/search?q=%23\2">\2</a>',$string);
-		// Handle regular links
-		$string = preg_replace('@(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@', '<a href="$1">$1</a>', $string);
 		// Append custom twitter image to start of description
 		get_option('st_icon') ? $string = '<img class="st_image" src="'.get_option('st_icon').'">'.$string : '';
 	}
@@ -113,7 +114,7 @@ function statustag_options() {
 <input type="text" name="<?php echo $data_interval; ?>" value="<?php echo $val_interval; ?>" size="20"> hour(s)
 </p>
 <p><?php _e("Enable links:"); ?> <input type="checkbox" name="<?php echo $data_links; ?>" value="1" <?php echo $val_links ? 'checked="checked"' : ''; ?>><br>
-<i>(Note: This can cause undesired effects if your theme uses the site description in the title.)</i><br>
+<i>(Note: This can cause undesired effects if your theme uses the site description in the page title.)</i><br>
 </p>
 <p><?php _e("Custom Twitter Icon:"); ?><br>
 <input type="text" name="<?php echo $data_icon; ?>" value="<?php echo $val_icon; ?>" size="20">
@@ -134,7 +135,7 @@ function get_latest_tweet() {
 		$twitter_account = get_option('st_profile');
 		$tweet = json_decode(file_get_contents("http://api.twitter.com/1/statuses/user_timeline/{$twitter_account}.json"));
 		update_option('st_cache', $tweet);
-		update_option('st_cache_timer', strtotime("+ ".get_option('st_interval')." hours"));
+		update_option('st_cache_timer', strtotime("now + ".get_option('st_interval')." hours"));
 	}
 	else {
 		$tweet = get_option('st_cache');
